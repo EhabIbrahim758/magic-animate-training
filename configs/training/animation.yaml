@@ -1,4 +1,4 @@
-pretrained_model_path: "/media/ehab/46EEC3E77E2602C67/Cyshield/magic-animate/pretrained_models/stable-diffusion-v1-5"
+pretrained_model_path: "/media/ehab/46EEC3E77E2602C67/Cyshield/magic-animate/pretrained_models/realistic-vision-v51"
 pretrained_vae_path: "/media/ehab/46EEC3E77E2602C67/Cyshield/magic-animate/pretrained_models/sd-vae-ft-mse"
 pretrained_controlnet_path: "/media/ehab/46EEC3E77E2602C67/Cyshield/magic-animate/pretrained_models/MagicAnimate/densepose_controlnet"
 pretrained_appearance_encoder_path: "/media/ehab/46EEC3E77E2602C67/Cyshield/magic-animate/pretrained_models/MagicAnimate/appearance_encoder"

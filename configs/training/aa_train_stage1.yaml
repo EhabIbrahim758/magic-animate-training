@@ -1,8 +1,8 @@
 image_finetune: True
 output_dir: "outputs"
-pretrained_model_path: "./stable-diffusion-v1-5"
+pretrained_model_path: "/media/ehab/46EEC3E77E2602C67/Cyshield/magic-animate/pretrained_models/realistic-vision-v51"
 image_encoder_path: "./IP-Adapter/models/image_encoder"
-pretrained_appearance_encoder_path: "./MagicAnimate"
+pretrained_appearance_encoder_path: "/media/ehab/46EEC3E77E2602C67/Cyshield/magic-animate/pretrained_models/MagicAnimate/appearance_encoder"
 
 unet_additional_kwargs:
   unet_use_cross_frame_attention: false
@@ -51,7 +51,7 @@ validation_data:
     - "./test/A15Tpiz-itS.mp4"
   num_inference_steps: 25
   guidance_scale: 3.
-  val_video_length: 8
+  val_video_length: 1
   sample_size: [512, 512]
 
 

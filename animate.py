@@ -6,6 +6,7 @@ from collections import OrderedDict
 
 import torch
 import random
+import cv2
 from diffusers import AutoencoderKL, DDIMScheduler, UniPCMultistepScheduler
 
 from tqdm import tqdm
@@ -227,7 +228,7 @@ class MagicAnimate(torch.nn.Module):
         random_seed = int(random_seed)
         step = int(step)
         guidance_scale = float(guidance_scale)
-        samples_per_video = []
+        
         # manually set random seed for reproduction
         if random_seed != -1:
             torch.manual_seed(random_seed)
@@ -246,14 +247,14 @@ class MagicAnimate(torch.nn.Module):
         generator.manual_seed(torch.initial_seed())
 
         print('before pipeline code ....................')
-        sample = self.pipeline.infer_image(
+        sample = self.pipeline(
             prompt,
             negative_prompt=n_prompt,
             num_inference_steps=step,
             guidance_scale=guidance_scale,
             width=W,
             height=H,
-            video_length=control.shape[1],
+            video_length=control.shape[0],
             controlnet_condition=control,
             init_latents=None,  # inference, start from white noise.
             generator=generator,
@@ -266,22 +267,26 @@ class MagicAnimate(torch.nn.Module):
             context_batch_size=1,
             context_schedule="uniform",
         ).videos
+        
+        # source_images = np.array([source_image])
+        # source_images = rearrange(torch.from_numpy(source_images), "t h w c -> 1 c t h w") / 255.0
+        # samples_per_video.append(source_images)
 
-        source_images = np.array([source_image] * original_length)
-        source_images = rearrange(torch.from_numpy(source_images), "t h w c -> 1 c t h w") / 255.0
-        samples_per_video.append(source_images)
+        # # control = control / 255.0
+        # control = rearrange(control, "b t c h w -> b c t h w")
+        # # control = torch.from_numpy(control)
+        # samples_per_video.append(control[:, :, :original_length])
 
-        # control = control / 255.0
-        control = rearrange(control, "b t c h w -> b c t h w")
-        # control = torch.from_numpy(control)
-        samples_per_video.append(control[:, :, :original_length])
+        # samples_per_video.append(sample[:, :, :original_length])
 
-        samples_per_video.append(sample[:, :, :original_length])
+        # samples_per_video = torch.cat(samples_per_video)
 
-        samples_per_video = torch.cat(samples_per_video)
-
-        return samples_per_video
-
+        # return samples_per_video
+        sample = np.array(sample.squeeze())
+        sample = np.transpose(sample, (1, 2, 0))
+        print(sample.shape)
+        cv2.imwrite('./data/res.jpeg', sample*255)
+        
 
 
     def forward(self, init_latents, image_prompts, timestep, source_image, motion_sequence, random_seed):
@@ -297,7 +302,6 @@ class MagicAnimate(torch.nn.Module):
         prompt = n_prompt = ""
         random_seed = int(random_seed)
 
-        samples_per_video = []
         # manually set random seed for reproduction
         if random_seed != -1:
             torch.manual_seed(random_seed)
@@ -312,10 +316,7 @@ class MagicAnimate(torch.nn.Module):
         generator = torch.Generator(device=self.device)
         generator.manual_seed(torch.initial_seed())
 
-        if image_prompts is not None:
-            # project from (batch_size, 1, 1024) to (batch_size, 16, 768)
-            image_prompts = self.unet.image_proj_model(image_prompts)
-
+        
         noise_pred = self.pipeline.train(
             prompt,
             prompt_embeddings=image_prompts,
@@ -323,7 +324,7 @@ class MagicAnimate(torch.nn.Module):
             timestep=timestep,
             width=W,
             height=H,
-            video_length=control.shape[1],
+            video_length=control.shape[0],
             controlnet_condition=control,
             init_latents=init_latents,  # add noise to latents
             generator=generator,

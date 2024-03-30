@@ -1,18 +1,18 @@
 import os
 import math
 import wandb
-import random
+# import random
 import logging
 import inspect
 import argparse
 import datetime
-import subprocess
+# import subprocess
 
 from pathlib import Path
 from tqdm.auto import tqdm
 from einops import rearrange
 from omegaconf import OmegaConf
-from safetensors import safe_open
+# from safetensors import safe_open
 from typing import Dict, Optional, Tuple
 from PIL import Image
 
@@ -20,26 +20,26 @@ import torch
 import torchvision
 import torch.nn.functional as F
 import torch.distributed as dist
-from torch.optim.swa_utils import AveragedModel
+# from torch.optim.swa_utils import AveragedModel
 from torch.utils.data.distributed import DistributedSampler
-from torch.nn.parallel import DistributedDataParallel as DDP
+# from torch.nn.parallel import DistributedDataParallel as DDP
 import numpy as np
 
 import diffusers
 from diffusers import AutoencoderKL, DDIMScheduler
-from diffusers.models import UNet2DConditionModel
-from diffusers.pipelines import StableDiffusionPipeline
+# from diffusers.models import UNet2DConditionModel
+# from diffusers.pipelines import StableDiffusionPipeline
 from diffusers.optimization import get_scheduler
-from diffusers.utils import check_min_version
-from diffusers.utils.import_utils import is_xformers_available
+# from diffusers.utils import check_min_version
+# from diffusers.utils.import_utils import is_xformers_available
 
-import transformers
-from transformers import CLIPTextModel, CLIPTokenizer, CLIPVisionModelWithProjection, CLIPImageProcessor
+# import transformers
+# from transformers import CLIPTextModel, CLIPTokenizer, CLIPVisionModelWithProjection, CLIPImageProcessor
 from MagicAnimate.data.dataset import WebVid10M, PexelsDataset, ImagesDataset
 from MagicAnimate.utils.util import save_videos_grid, pad_image
 # from controlnet_aux import DWposeDetector
 from accelerate import Accelerator
-from einops import repeat
+# from einops import repeat
 from animate import MagicAnimate
 
 
@@ -156,10 +156,9 @@ def main(
     #     device=local_rank
     # )
     # -------- magic_animate --------#
-    model = MagicAnimate(train_batch_size=train_batch_size,
-                         device=local_rank,
+    model = MagicAnimate(device=local_rank,
                          unet_additional_kwargs=OmegaConf.to_container(unet_additional_kwargs), 
-                         image_finetune=True)
+                        )
 
     # ----- load image encoder ----- #
     # image_encoder = CLIPVisionModelWithProjection.from_pretrained(image_encoder_path)
@@ -404,6 +403,7 @@ def main(
                                source_image=np.array(ref_pil_image),  # FIXME: only support train_batch_size=1
                                motion_sequence=batch['pose'],
                                random_seed=seed)
+            
             loss = F.mse_loss(model_pred.float(), target.float(), reduction="mean")
 
             # use accelerator
@@ -544,7 +544,7 @@ def main(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config", type=str, required=True)
+    parser.add_argument("--config", type=str, default='configs/training/aa_train_stage1.yaml')
     parser.add_argument("--launcher", type=str, choices=["pytorch", "slurm"], default="pytorch")
     parser.add_argument("--wandb", action="store_true")
     args = parser.parse_args()
