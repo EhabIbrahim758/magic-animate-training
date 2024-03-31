@@ -7,7 +7,7 @@ pretrained_appearance_encoder_path: "/media/ehab/46EEC3E77E2602C67/Cyshield/magi
 unet_additional_kwargs:
   unet_use_cross_frame_attention: false
   unet_use_temporal_attention: false
-  use_motion_module: false
+  use_motion_module: true
   motion_module_resolutions:
   - 1
   - 2

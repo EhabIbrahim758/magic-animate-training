@@ -8,7 +8,7 @@ import torch
 import random
 import cv2
 from diffusers import AutoencoderKL, DDIMScheduler, UniPCMultistepScheduler
-
+from peft import LoraConfig
 from tqdm import tqdm
 from transformers import CLIPTextModel, CLIPTokenizer
 
@@ -36,7 +36,8 @@ class MagicAnimate(torch.nn.Module):
                  device=torch.device("cuda"),
                  unet_additional_kwargs=None,
                  L=None, 
-                 unet2d = False):
+                 unet2d = False, 
+                ):
         super().__init__()
 
         print("Initializing MagicAnimate Pipeline...")
@@ -66,6 +67,9 @@ class MagicAnimate(torch.nn.Module):
             
         self.appearance_encoder = AppearanceEncoderModel.from_pretrained(config.pretrained_appearance_encoder_path,
                                                                          subfolder="appearance_encoder")
+        # self.appearance_encoder = UNet2DConditionModel.from_pretrained(config.pretrained_appearance_encoder_path,
+        #                                                                subfolder="appearance_encoder"
+        #                                                                )
 
         if config.pretrained_vae_path is not None:
             self.vae = AutoencoderKL.from_pretrained(config.pretrained_vae_path)
@@ -80,6 +84,7 @@ class MagicAnimate(torch.nn.Module):
         self.text_encoder.to(device=self.device, dtype=torch.float16)
         self.controlnet.to(device=self.device, dtype=torch.float16)
         self.appearance_encoder.to(device=self.device, dtype=torch.float16)
+
 
         # 1. unet ckpt
         # 1.1 motion module

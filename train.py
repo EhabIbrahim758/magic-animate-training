@@ -15,7 +15,7 @@ from omegaconf import OmegaConf
 # from safetensors import safe_open
 from typing import Dict, Optional, Tuple
 from PIL import Image
-
+from peft import LoraConfig
 import torch
 import torchvision
 import torch.nn.functional as F
@@ -171,13 +171,32 @@ def main(
     model.unet.requires_grad_(False)
     model.controlnet.requires_grad_(False)
     model.appearance_encoder.requires_grad_(False)
+    
+    lora_training = True
+    if lora_training:
+        # Freeze the unet parameters before adding adapters
+        for param in model.unet.parameters():
+            param.requires_grad_(False)
 
-    for name, param in model.appearance_encoder.named_parameters():
-        for trainable_module_name in trainable_modules:
-            if trainable_module_name in name:
-                print(name)
-                param.requires_grad = True
-                break
+        unet_lora_config = LoraConfig(
+            r=4,
+            lora_alpha=4,
+            init_lora_weights="gaussian",
+            target_modules=["to_k", "to_q", "to_v", "to_out.0"],
+        )
+        # Add adapter and make sure the trainable params are in float32.
+        model.unet.add_adapter(unet_lora_config)
+        
+    trainable_params = list(filter(lambda p: p.requires_grad, model.parameters()))
+    # print('='*50)
+    # print(trainable_params)
+    # print('='*50)
+    # for name, param in model.appearance_encoder.named_parameters():
+    #     for trainable_module_name in trainable_modules:
+    #         if trainable_module_name in name:
+    #             print(name)
+    #             param.requires_grad = True
+    #             break
     
     # model.requires_grad_(False)
     # for name, param in model.named_parameters():
@@ -405,7 +424,9 @@ def main(
                                random_seed=seed)
             
             loss = F.mse_loss(model_pred.float(), target.float(), reduction="mean")
-
+            print('='*30)
+            print('Loss : ', loss)
+            print('='*30)
             # use accelerator
             accelerator.backward(loss, retain_graph=True)
             accelerator.clip_grad_norm_(trainable_params, 1.0)
