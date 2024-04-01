@@ -184,14 +184,16 @@ class ImagesDataset(Dataset):
             data_path: str,
             sample_size=(512, 512),
             sample_stride=1,
+            transform = True,
     ):
         self.data_path = data_path
         self.sample_stride = sample_stride
         self.sample_size = sample_size
-
+        self.transform = transform
+        
         self.pixel_transforms = transforms.Compose([
             transforms.ToTensor(), 
-            transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5], inplace=True),
+            # transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5], inplace=True),
             
         ])
 
@@ -206,11 +208,14 @@ class ImagesDataset(Dataset):
         pose_path = os.path.join(self.data_path, 'pose_data', self.image_files[idx]) 
         image = Image.open(img_path).convert('RGB')
         pose = Image.open(pose_path).convert('RGB')
-        image, pose = resize_and_crop([np.array(image), np.array(pose)])
-        
-        # image = self.pixel_transforms(image)
-        # pose = self.pixel_transforms(pose)
-        
+        # image, pose = resize_and_crop([np.array(image), np.array(pose)])
+        if self.transform:
+            image = self.pixel_transforms(image)
+            pose = self.pixel_transforms(pose)
+        else :
+            image = np.array(image)
+            pose = np.array(pose)
+            
         sample = {'image': image,
                   'pose': pose}
         return sample

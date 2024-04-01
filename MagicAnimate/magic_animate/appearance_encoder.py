@@ -981,7 +981,7 @@ class AppearanceEncoderModel(ModelMixin, ConfigMixin, UNet2DConditionLoadersMixi
                 additional_residuals = {}
                 if is_adapter and len(down_block_additional_residuals) > 0:
                     additional_residuals["additional_residuals"] = down_block_additional_residuals.pop(0)
-
+                
                 sample, res_samples = downsample_block(
                     hidden_states=sample,
                     temb=emb,
@@ -991,6 +991,7 @@ class AppearanceEncoderModel(ModelMixin, ConfigMixin, UNet2DConditionLoadersMixi
                     encoder_attention_mask=encoder_attention_mask,
                     **additional_residuals,
                 )
+                
             else:
                 sample, res_samples = downsample_block(hidden_states=sample, temb=emb)
 

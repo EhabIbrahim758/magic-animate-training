@@ -44,42 +44,32 @@ from animate import MagicAnimate
 
 
 def main(
-
         # >>>>>> new params >>>>>> #
         image_encoder_path: str,
-
         # <<<<<< new params <<<<<< #
-
         image_finetune: bool,
-
         name: str,
         use_wandb: bool,
         launcher: str,
-
         output_dir: str,
         pretrained_model_path: str,
         pretrained_appearance_encoder_path: str,
-
         train_data: Dict,
         validation_data: Dict,
         cfg_random_null_text: bool = True,
         cfg_random_null_text_ratio: float = 0.1,
-
         unet_checkpoint_path: str = "",
         unet_additional_kwargs: Dict = {},
         ema_decay: float = 0.9999,
         noise_scheduler_kwargs=None,
-
         max_train_epoch: int = -1,
         max_train_steps: int = 100,
         validation_steps: int = 100,
         validation_steps_tuple: Tuple = (-1,),
-
         learning_rate: float = 3e-5,
         scale_lr: bool = False,
         lr_warmup_steps: int = 0,
         lr_scheduler: str = "constant",
-
         trainable_modules: Tuple[str] = (None,),
         num_workers: int = 8,
         train_batch_size: int = 1,
@@ -92,10 +82,8 @@ def main(
         gradient_checkpointing: bool = False,
         checkpointing_epochs: int = 5,
         checkpointing_steps: int = -1,
-
         mixed_precision_training: bool = True,
         enable_xformers_memory_efficient_attention: bool = True,
-
         global_seed: int = 42,
         is_debug: bool = False,
 ):
@@ -172,40 +160,12 @@ def main(
     model.controlnet.requires_grad_(False)
     model.appearance_encoder.requires_grad_(False)
     
-    lora_training = True
-    if lora_training:
-        # Freeze the unet parameters before adding adapters
-        for param in model.unet.parameters():
-            param.requires_grad_(False)
-
-        unet_lora_config = LoraConfig(
-            r=4,
-            lora_alpha=4,
-            init_lora_weights="gaussian",
-            target_modules=["to_k", "to_q", "to_v", "to_out.0"],
-        )
-        # Add adapter and make sure the trainable params are in float32.
-        model.unet.add_adapter(unet_lora_config)
-        
-    trainable_params = list(filter(lambda p: p.requires_grad, model.parameters()))
-    # print('='*50)
-    # print(trainable_params)
-    # print('='*50)
-    # for name, param in model.appearance_encoder.named_parameters():
-    #     for trainable_module_name in trainable_modules:
-    #         if trainable_module_name in name:
-    #             print(name)
-    #             param.requires_grad = True
-    #             break
+    for name, param in model.appearance_encoder.named_parameters():
+        for trainable_module_name in trainable_modules:
+            if trainable_module_name in name:
+                param.requires_grad = True
+                break
     
-    # model.requires_grad_(False)
-    # for name, param in model.named_parameters():
-    #     print(name)
-    #     for trainable_module_name in trainable_modules:
-    #         if trainable_module_name in name:
-    #             param.requires_grad = True
-    #             break
-
     trainable_params = list(filter(lambda p: p.requires_grad, model.parameters()))
     optimizer = torch.optim.AdamW(
         trainable_params,
@@ -226,7 +186,7 @@ def main(
         # model.controlnet.enable_gradient_checkpointing()
 
     # model.unet.enable_xformers_memory_efficient_attention()
-    model.appearance_encoder.enable_xformers_memory_efficient_attention()
+    # model.appearance_encoder.enable_xformers_memory_efficient_attention()
     # model.controlnet.enable_xformers_memory_efficient_attention()
 
     weight_type = torch.float16
@@ -333,7 +293,7 @@ def main(
                     latents = latents.sample()
 
                 latents = latents * 0.18215
-
+            
             # Sample noise that we'll add to the latents
             noise = torch.randn_like(latents)
             bsz = latents.shape[0]
@@ -450,14 +410,13 @@ def main(
                 state_dict = {
                     "epoch": epoch,
                     "global_step": global_step,
-                    "state_dict": model.state_dict(),
+                    "state_dict": model.appearance_encoder.state_dict(),
                 }
                 if step == len(train_dataloader) - 1:
                     torch.save(state_dict, os.path.join(save_path, f"checkpoint-epoch-{epoch + 1}.ckpt"))
                 else:
                     torch.save(state_dict, os.path.join(save_path, f"checkpoint.ckpt"))
                 logging.info(f"Saved state to {save_path} (global_step: {global_step})")
-
             # Periodically validation
             # if is_main_process and (global_step % validation_steps == 0 or global_step in validation_steps_tuple):
             #     samples = []
