@@ -356,7 +356,7 @@ class AnimationPipeline(DiffusionPipeline):
 
     def prepare_condition(self, condition, num_videos_per_prompt, device, dtype, do_classifier_free_guidance):
         # prepare conditions for controlnet
-        if condition.dtype != np.array :
+        if not isinstance(condition, np.ndarray) :
             condition = condition.to(device=device, dtype=dtype) / 255.0
         else :
             condition = torch.from_numpy(condition).to(device=device, dtype=dtype) / 255.0

@@ -164,15 +164,21 @@ def main(
         for trainable_module_name in trainable_modules:
             if trainable_module_name in name:
                 param.requires_grad = True
-                break
-    
+                
+                # if 'weight' in name:
+                #     # if isinstance(param.data, torch.nn.Linear) or isinstance(param.data, torch.nn.Conv2d):
+                #     torch.nn.init.xavier_uniform_(param)
+                # elif 'bias' in name:
+                #     torch.nn.init.zeros_(param)
+                break  
+            
     trainable_params = list(filter(lambda p: p.requires_grad, model.parameters()))
-    optimizer = torch.optim.AdamW(
+    optimizer = torch.optim.SGD(
         trainable_params,
         lr=learning_rate,
-        betas=(adam_beta1, adam_beta2),
+        # betas=(adam_beta1, adam_beta2),
         weight_decay=adam_weight_decay,
-        eps=adam_epsilon,
+        # eps=adam_epsilon,
     )
 
     if accelerator.is_main_process:
@@ -366,6 +372,7 @@ def main(
             # Get the target for loss depending on the prediction type
             if noise_scheduler.config.prediction_type == "epsilon":
                 target = noise
+                target = rearrange(target, "(b f) c h w -> b c f h w", f = 1)
             elif noise_scheduler.config.prediction_type == "v_prediction":
                 raise NotImplementedError
             else:
@@ -386,13 +393,20 @@ def main(
             loss = F.mse_loss(model_pred.float(), target.float(), reduction="mean")
             print('='*30)
             print('Loss : ', loss)
+            # print(trainable_params)
             print('='*30)
+            
             # use accelerator
             accelerator.backward(loss, retain_graph=True)
-            accelerator.clip_grad_norm_(trainable_params, 1.0)
+            accelerator.clip_grad_norm_(trainable_params, 0)
             optimizer.step()
             optimizer.zero_grad()
-
+            
+            # optimizer.zero_grad()
+            # loss.backward()
+            # optimizer.step()
+            # print(trainable_params)
+            # break
             lr_scheduler.step()
             progress_bar.update(1)
             global_step += 1
@@ -413,10 +427,11 @@ def main(
                     "state_dict": model.appearance_encoder.state_dict(),
                 }
                 if step == len(train_dataloader) - 1:
-                    torch.save(state_dict, os.path.join(save_path, f"checkpoint-epoch-{epoch + 1}.ckpt"))
+                    torch.save(state_dict, os.path.join(save_path, f"checkpoint-epoch-{epoch + 1}.safetensors"))
                 else:
-                    torch.save(state_dict, os.path.join(save_path, f"checkpoint.ckpt"))
+                    torch.save(state_dict, os.path.join(save_path, f"checkpoint.safetensors"))
                 logging.info(f"Saved state to {save_path} (global_step: {global_step})")
+            
             # Periodically validation
             # if is_main_process and (global_step % validation_steps == 0 or global_step in validation_steps_tuple):
             #     samples = []
@@ -519,7 +534,7 @@ def main(
             # if global_step >= max_train_steps:
             #     break
 
-    dist.destroy_process_group()
+    # dist.destroy_process_group()
 
 
 if __name__ == "__main__":
