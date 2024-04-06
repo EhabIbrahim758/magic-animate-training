@@ -56,7 +56,7 @@ validation_data:
 
 
 trainable_modules:
-  - "conv_in"
+  - "."
 
 unet_checkpoint_path: ""
 

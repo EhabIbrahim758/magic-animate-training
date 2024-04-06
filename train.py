@@ -391,10 +391,10 @@ def main(
                                random_seed=seed)
             
             loss = F.mse_loss(model_pred.float(), target.float(), reduction="mean")
-            print('='*30)
-            print('Loss : ', loss)
+            # print('='*30)
+            # print('Loss : ', loss)
             # print(trainable_params)
-            print('='*30)
+            # print('='*30)
             
             # use accelerator
             accelerator.backward(loss, retain_graph=True)
@@ -421,15 +421,15 @@ def main(
             # Save checkpoint
             if is_main_process and (global_step % checkpointing_steps == 0 or step == len(train_dataloader) - 1):
                 save_path = os.path.join(output_dir, f"checkpoints")
-                state_dict = {
-                    "epoch": epoch,
-                    "global_step": global_step,
-                    "state_dict": model.appearance_encoder.state_dict(),
-                }
+                # state_dict = {
+                #     "epoch": epoch,
+                #     "global_step": global_step,
+                #     "state_dict": model.appearance_encoder.state_dict(),
+                # }
                 if step == len(train_dataloader) - 1:
-                    torch.save(state_dict, os.path.join(save_path, f"checkpoint-epoch-{epoch + 1}.safetensors"))
+                    torch.save(model.appearance_encoder.state_dict(), os.path.join(save_path, f"checkpoint-epoch-{epoch + 1}.safetensors"))
                 else:
-                    torch.save(state_dict, os.path.join(save_path, f"checkpoint.safetensors"))
+                    torch.save(model.appearance_encoder.state_dict(), os.path.join(save_path, f"checkpoint.safetensors"))
                 logging.info(f"Saved state to {save_path} (global_step: {global_step})")
             
             # Periodically validation
