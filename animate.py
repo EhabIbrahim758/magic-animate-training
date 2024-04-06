@@ -229,7 +229,8 @@ class MagicAnimate(torch.nn.Module):
 
 
     def infer_for_image(self, source_image, motion_sequence, random_seed=-1, step=50, guidance_scale=7.5, size=(512, 512)):
-        prompt = n_prompt = ""
+        prompt = 'High Quality, FHD, high resolution'
+        n_prompt = ""
         random_seed = int(random_seed)
         step = int(step)
         guidance_scale = float(guidance_scale)
