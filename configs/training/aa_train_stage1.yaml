@@ -64,8 +64,8 @@ learning_rate:    1.e-5
 train_batch_size: 1
 num_workers: 8
 
-max_train_epoch:      -1
-max_train_steps:      100
+max_train_epoch:      2
+max_train_steps:      -1
 checkpointing_epochs: 10
 checkpointing_steps:  100
 
