@@ -942,6 +942,7 @@ class AppearanceEncoderModel(ModelMixin, ConfigMixin, UNet2DConditionLoadersMixi
         if self.time_embed_act is not None:
             emb = self.time_embed_act(emb)
 
+        
         if self.encoder_hid_proj is not None and self.config.encoder_hid_dim_type == "text_proj":
             encoder_hidden_states = self.encoder_hid_proj(encoder_hidden_states)
         elif self.encoder_hid_proj is not None and self.config.encoder_hid_dim_type == "text_image_proj":
@@ -1012,6 +1013,7 @@ class AppearanceEncoderModel(ModelMixin, ConfigMixin, UNet2DConditionLoadersMixi
             down_block_res_samples = new_down_block_res_samples
 
         # 4. mid
+        
         if self.mid_block is not None:
             sample = self.mid_block(
                 sample,
@@ -1062,5 +1064,5 @@ class AppearanceEncoderModel(ModelMixin, ConfigMixin, UNet2DConditionLoadersMixi
 
         if not return_dict:
             return (sample,)
-
+        
         return UNet2DConditionOutput(sample=sample)

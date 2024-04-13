@@ -24,6 +24,8 @@ import torch.distributed as dist
 from torch.utils.data.distributed import DistributedSampler
 # from torch.nn.parallel import DistributedDataParallel as DDP
 import numpy as np
+import secrets
+
 
 import diffusers
 from diffusers import AutoencoderKL, DDIMScheduler
@@ -78,7 +80,7 @@ def main(
         adam_weight_decay: float = 1e-2,
         adam_epsilon: float = 1e-08,
         max_grad_norm: float = 1.0,
-        gradient_accumulation_steps: int = 1,
+        gradient_accumulation_steps: int = 20,
         gradient_checkpointing: bool = False,
         checkpointing_epochs: int = 5,
         checkpointing_steps: int = -1,
@@ -89,10 +91,10 @@ def main(
 ):
     # Accelerate
     accelerator = Accelerator(
-        gradient_accumulation_steps=1,
+        gradient_accumulation_steps=gradient_accumulation_steps,
     )
-    seed = global_seed + accelerator.process_index
-    torch.manual_seed(seed)
+    seed = global_seed 
+    # torch.manual_seed(seed)
 
     # Logging folder
     folder_name = "debug" if is_debug else name + datetime.datetime.now().strftime("-%Y-%m-%dT%H-%M-%S")
@@ -160,17 +162,18 @@ def main(
     model.controlnet.requires_grad_(False)
     model.appearance_encoder.requires_grad_(False)
     
+    for name, param in model.unet.named_parameters():
+        for trainable_module_name in trainable_modules:
+            if trainable_module_name in name:
+                param.requires_grad = True
+                # break  
+            
     for name, param in model.appearance_encoder.named_parameters():
         for trainable_module_name in trainable_modules:
             if trainable_module_name in name:
                 param.requires_grad = True
-                
-                # if 'weight' in name:
-                #     # if isinstance(param.data, torch.nn.Linear) or isinstance(param.data, torch.nn.Conv2d):
-                #     torch.nn.init.xavier_uniform_(param)
-                # elif 'bias' in name:
-                #     torch.nn.init.zeros_(param)
-                break  
+                # break  
+            
             
     trainable_params = list(filter(lambda p: p.requires_grad, model.parameters()))
     optimizer = torch.optim.SGD(
@@ -187,7 +190,7 @@ def main(
 
     # Enable gradient checkpointing
     if gradient_checkpointing:
-        # model.unet.enable_gradient_checkpointing()
+        model.unet.enable_gradient_checkpointing()
         model.appearance_encoder.enable_gradient_checkpointing()
         # model.controlnet.enable_gradient_checkpointing()
 
@@ -263,14 +266,15 @@ def main(
     progress_bar = tqdm(range(global_step, max_train_steps), disable=not accelerator.is_main_process)
     progress_bar.set_description("Steps")
 
-    model, optimizer = accelerator.prepare(model, optimizer)
-
+    # model, optimizer = accelerator.prepare(model, optimizer)
+    model, optimizer, lr_scheduler = accelerator.prepare(model, optimizer, lr_scheduler)
+    
     for epoch in range(first_epoch, num_train_epochs):
-        train_dataloader.sampler.set_epoch(epoch)
+        # train_dataloader.sampler.set_epoch(epoch)
         model.train()
 
         for step, batch in enumerate(train_dataloader):
-
+            
             # Data batch sanity check
             # if global_step % 1000 == 0:
             #     # pixel_values, texts = batch['pixel_values'].cpu(), batch['text']
@@ -304,7 +308,12 @@ def main(
             bsz = latents.shape[0]
 
             # Sample a random timestep for each video
-            timesteps = torch.randint(0, noise_scheduler.config.num_train_timesteps, (bsz,), device=latents.device)
+            # torch.manual_seed()
+
+            # Generate a random integer between 0 and 1000
+            random_number = secrets.randbelow(1001)
+            # timesteps = torch.randint(0, noise_scheduler.config.num_train_timesteps, (bsz,), device=latents.device)
+            timesteps = torch.tensor([random_number], device = latents.device)
             timesteps = timesteps.long()
 
             # Add noise to the latents according to the noise magnitude at each timestep
@@ -382,30 +391,27 @@ def main(
             image_np = batch['image'][0].permute(1, 2, 0).numpy()
             image_np = (image_np * 0.5 + 0.5) * 255
             ref_pil_image = Image.fromarray(image_np.astype(np.uint8))
-            model_pred = model(init_latents=noisy_latents,
-                               image_prompts=None,
-                               timestep=timesteps,
-                               source_image=np.array(ref_pil_image),  # FIXME: only support train_batch_size=1
-                               motion_sequence=batch['pose'],
-                               random_seed=seed)
+            with accelerator.accumulate(model):
+                model_pred = model(init_latents=noisy_latents,
+                                image_prompts=None,
+                                timestep=timesteps,
+                                source_image=np.array(ref_pil_image),  # FIXME: only support train_batch_size=1
+                                motion_sequence=batch['pose'],
+                                random_seed=seed)
             
-            loss = F.mse_loss(model_pred.float(), target.float(), reduction="mean")
-            # print('='*30)
-            # print('Loss : ', loss)
-            # print(trainable_params)
-            # print('='*30)
+                loss = F.mse_loss(model_pred.float(), target.float(), reduction="mean")
+                print('='*30)
+                print('Loss : ', loss)
+                print(timesteps)
+                print('='*30)
             
-            # use accelerator
-            accelerator.backward(loss, retain_graph=True)
-            accelerator.clip_grad_norm_(trainable_params, 0)
-            optimizer.step()
-            optimizer.zero_grad()
+                # use accelerator
+                accelerator.backward(loss, retain_graph=True)
+                accelerator.clip_grad_norm_(trainable_params, 1)
+                optimizer.step()
+                optimizer.zero_grad()
             
-            # optimizer.zero_grad()
-            # loss.backward()
-            # optimizer.step()
-            # print(trainable_params)
-            # break
+            
             lr_scheduler.step()
             progress_bar.update(1)
             global_step += 1
@@ -427,8 +433,10 @@ def main(
                 # }
                 if step == len(train_dataloader) - 1:
                     torch.save(model.appearance_encoder.state_dict(), os.path.join(save_path, f"checkpoint-epoch-{epoch + 1}.safetensors"))
+                    torch.save(model.unet.state_dict(), os.path.join(save_path, f"checkpoint-epoch-{epoch + 1}.bin"))
                 else:
                     torch.save(model.appearance_encoder.state_dict(), os.path.join(save_path, f"checkpoint.safetensors"))
+                    torch.save(model.unet.state_dict(), os.path.join(save_path, f"checkpoint.bin"))
                 logging.info(f"Saved state to {save_path} (global_step: {global_step})")
             
             # Periodically validation

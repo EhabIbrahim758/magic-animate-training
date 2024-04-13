@@ -597,8 +597,9 @@ class AnimationPipeline(DiffusionPipeline):
         # here `guidance_scale` is defined analog to the guidance weight `w` of equation (2)
         # of the Imagen paper: https://arxiv.org/pdf/2205.11487.pdf . `guidance_scale = 1`
         # corresponds to doing no classifier free guidance.
+        
         do_classifier_free_guidance = guidance_scale > 1.0
-
+        
         # Encode input prompt
         if prompt_embeddings is None:
             prompt = prompt if isinstance(prompt, list) else [prompt] * batch_size
@@ -704,7 +705,8 @@ class AnimationPipeline(DiffusionPipeline):
             counter = torch.zeros(
                 (1, 1, latents.shape[2], 1, 1), device=latents.device, dtype=latents.dtype
             )
-
+            x = ref_image_latents.repeat(context_batch_size * (2 if do_classifier_free_guidance else 1), 1, 1, 1)
+            
             appearance_encoder(
                 ref_image_latents.repeat(context_batch_size * (2 if do_classifier_free_guidance else 1), 1, 1, 1),
                 t,
@@ -716,6 +718,7 @@ class AnimationPipeline(DiffusionPipeline):
                 0, num_inference_steps, latents.shape[2], context_frames, context_stride, 0
             ))
             num_context_batches = math.ceil(len(context_queue) / context_batch_size)
+            
             for i in range(num_context_batches):
                 context = context_queue[i * context_batch_size: (i + 1) * context_batch_size]
                 # expand the latents if we are doing classifier free guidance
@@ -723,6 +726,7 @@ class AnimationPipeline(DiffusionPipeline):
                     torch.cat([latents[:, :, c] for c in context])
                         .to(device)
                 )
+                
                 controlnet_latent_input = self.scheduler.scale_model_input(controlnet_latent_input, t)
 
                 # prepare inputs for controlnet
@@ -730,6 +734,7 @@ class AnimationPipeline(DiffusionPipeline):
                 controlnet_latent_input = rearrange(controlnet_latent_input, "b c f h w -> (b f) c h w")
                 
                 # controlnet inference
+                
                 down_block_res_samples, mid_block_res_sample = self.controlnet(
                     controlnet_latent_input,
                     t,
@@ -748,9 +753,11 @@ class AnimationPipeline(DiffusionPipeline):
             ))
 
             num_context_batches = math.ceil(len(context_queue) / context_batch_size)
+            
             global_context = []
             for i in range(num_context_batches):
                 global_context.append(context_queue[i * context_batch_size: (i + 1) * context_batch_size])
+                
 
             for context in global_context[rank::world_size]:
                 # expand the latents if we are doing classifier free guidance
@@ -759,6 +766,7 @@ class AnimationPipeline(DiffusionPipeline):
                         .to(device)
                         .repeat(2 if do_classifier_free_guidance else 1, 1, 1, 1, 1)
                 )
+               
                 latent_model_input = self.scheduler.scale_model_input(latent_model_input, t)
 
                 b, c, f, h, w = latent_model_input.shape
@@ -820,7 +828,7 @@ class AnimationPipeline(DiffusionPipeline):
                 dist.barrier()
 
             reference_control_writer.clear()
-
+            
         interpolation_factor = 1
         latents = self.interpolate_latents(latents, interpolation_factor, device)
         # Post-processing

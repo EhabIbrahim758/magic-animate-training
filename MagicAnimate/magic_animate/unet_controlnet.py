@@ -488,7 +488,7 @@ class UNet3DConditionModel(ModelMixin, ConfigMixin, PeftAdapterMixin):
         # there might be better ways to encapsulate this.
         t_emb = t_emb.to(dtype=self.dtype)
         emb = self.time_embedding(t_emb)
-
+        
         if self.class_embedding is not None:
             if class_labels is None:
                 raise ValueError("class_labels should be provided when num_class_embeds > 0")
@@ -508,7 +508,7 @@ class UNet3DConditionModel(ModelMixin, ConfigMixin, PeftAdapterMixin):
         sample = self.conv_in(sample)
         # down
         is_controlnet = mid_block_additional_residual is not None and down_block_additional_residuals is not None
-
+        
         down_block_res_samples = (sample,)
         for downsample_block in self.down_blocks:
             if hasattr(downsample_block, "has_cross_attention") and downsample_block.has_cross_attention:
@@ -523,7 +523,7 @@ class UNet3DConditionModel(ModelMixin, ConfigMixin, PeftAdapterMixin):
                                                        encoder_hidden_states=encoder_hidden_states)
 
             down_block_res_samples += res_samples
-
+        
         if is_controlnet:
             new_down_block_res_samples = ()
 
@@ -539,12 +539,13 @@ class UNet3DConditionModel(ModelMixin, ConfigMixin, PeftAdapterMixin):
         sample = self.mid_block(
             sample, emb, encoder_hidden_states=encoder_hidden_states, attention_mask=attention_mask
         )
-
+        
         if is_controlnet:
             sample = sample + mid_block_additional_residual
 
         # up
         for i, upsample_block in enumerate(self.up_blocks):
+            
             is_final_block = i == len(self.up_blocks) - 1
 
             res_samples = down_block_res_samples[-len(upsample_block.resnets):]

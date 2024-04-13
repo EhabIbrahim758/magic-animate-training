@@ -643,9 +643,10 @@ class ReferenceAttentionControl():
             reader_attn_modules = sorted(reader_attn_modules, key=lambda x: -x.norm1.normalized_shape[0])
             for r in reader_attn_modules:
                 r.bank.clear()
+
         if self.reference_adain:
             reader_gn_modules = [self.unet.mid_block]
-            
+    
             down_blocks = self.unet.down_blocks
             for w, module in enumerate(down_blocks):
                 reader_gn_modules.append(module)
