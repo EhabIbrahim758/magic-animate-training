@@ -2,7 +2,7 @@ image_finetune: True
 output_dir: "outputs"
 pretrained_model_path: "/media/ehab/46EEC3E77E2602C67/Cyshield/magic-animate/pretrained_models/stable-diffusion-v1-5"
 image_encoder_path: "./IP-Adapter/models/image_encoder"
-pretrained_appearance_encoder_path: "./media/ehab/46EEC3E77E2602C67/Cyshield/magic-animate/pretrained_models/MagicAnimate/appearance_encoder"
+pretrained_appearance_encoder_path: "/media/ehab/46EEC3E77E2602C67/Cyshield/magic-animate/pretrained_models/MagicAnimate/appearance_encoder"
 
 unet_additional_kwargs:
   unet_use_cross_frame_attention: false
@@ -56,7 +56,7 @@ validation_data:
 
 
 trainable_modules:
-  - "."
+  - "up"
 
 unet_checkpoint_path: ""
 
@@ -64,10 +64,10 @@ learning_rate:    1.e-5
 train_batch_size: 1
 num_workers: 8
 
-max_train_epoch:      2
+max_train_epoch:      100
 max_train_steps:      -1
-checkpointing_epochs: 10
-checkpointing_steps:  100
+checkpointing_epochs: 5000
+checkpointing_steps:  5000
 
 validation_steps:       5000
 validation_steps_tuple: [2, 100, 500, 1000, 2000]
