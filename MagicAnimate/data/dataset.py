@@ -205,6 +205,7 @@ class ImagesDataset(Dataset):
         
     def __getitem__(self, idx):
         img_path = os.path.join(self.data_path, 'images_data', self.image_files[idx])        
+        idx = np.random.randint(0, len(self.image_files))
         pose_path = os.path.join(self.data_path, 'pose_data', self.image_files[idx]) 
         image = Image.open(img_path).convert('RGB')
         pose = Image.open(pose_path).convert('RGB')

@@ -20,7 +20,7 @@ import torch
 import os 
 
 
-model = MagicAnimate()
+# model = MagicAnimate()
 
 def pred(model, src_image, control, src_image_latent=False):
     control = control[None, :]
